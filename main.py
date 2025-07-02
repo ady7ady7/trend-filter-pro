@@ -27,11 +27,22 @@ def main():
     print("1. Analyze single instrument")
     print("2. Analyze multiple instruments from list")
     
-    choice = input("\nSelect mode (1 or 2): ").strip()
+    try:
+        choice = input("\nSelect mode (1 or 2): ").strip()
+        print(f"DEBUG: You entered: '{choice}'")  # Debug line
+    except (KeyboardInterrupt, EOFError):
+        print("\nExiting...")
+        return
     
     if choice == "1":
         # Single instrument analysis
-        symbol = input("Enter instrument symbol (e.g., EURUSD=X, ^GSPC, GC=F): ").strip().upper()
+        try:
+            symbol = input("Enter instrument symbol (e.g., EURUSD=X, ^GSPC, GC=F): ").strip().upper()
+            print(f"DEBUG: Symbol entered: '{symbol}'")  # Debug line
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting...")
+            return
+            
         if not symbol:
             print("No symbol provided. Exiting.")
             return
@@ -48,7 +59,11 @@ def main():
         use_default = input("\nUse this list? (y/n): ").strip().lower()
         if use_default != 'y':
             print("Enter instruments separated by commas:")
-            custom_input = input().strip()
+            try:
+                custom_input = input().strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nExiting...")
+                return
             if custom_input:
                 instruments = [s.strip().upper() for s in custom_input.split(',')]
             else:
