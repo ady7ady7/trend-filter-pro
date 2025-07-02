@@ -1,0 +1,7 @@
+echo "*.pyc
+__pycache__/
+*.log
+trend_analysis_results/
+.env
+.vscode/
+*.csv" > .gitignore
