@@ -1,16 +1,17 @@
 # Trend Filter Application Requirements
 # Core dependencies for the trading analysis application
 
-# Data fetching and processing
+# Core dependencies
 yfinance>=0.2.18
 pandas>=1.5.0
-numpy>=1.24.0
-
-# Technical analysis (much easier to install than TA-Lib!)
-pandas-ta>=0.3.14b
-
-# Utilities and logging
+numpy>=1.24.0,<2.0
 python-dateutil>=2.8.0
+
+# Database integration
+pymongo>=4.6.0
+
+# Scheduling and concurrency
+schedule>=1.2.0
 
 # Optional: For enhanced data visualization (if you want to add charts later)
 # matplotlib>=3.6.0

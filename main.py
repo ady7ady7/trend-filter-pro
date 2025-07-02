@@ -378,3 +378,120 @@ def view_database_insights(db_manager: DatabaseManager):
             params = result['best_parameters']
             print(f"\n{symbol}:")
             print(f"  Score: {params['validation_score']:.2f}")
+            print(f"  Confidence: {params['confidence_level']}")
+            print(f"  EMAs: {params['parameters']['ema_periods']}")
+        
+        # Performance summaries
+        print(f"\n📈 PERFORMANCE SUMMARIES (Last 30 Days):")
+        
+        # Get some symbols for performance summary
+        symbols_to_check = ['EURUSD=X', '^GSPC', 'GC=F', 'GBPUSD=X']
+        
+        for symbol in symbols_to_check:
+            try:
+                summary = db_manager.get_performance_summary(symbol, 30)
+                if summary.get('analyses_count', 0) > 0:
+                    print(f"\n{symbol}:")
+                    print(f"  Analyses: {summary['analyses_count']}")
+                    print(f"  Avg Score: {summary.get('avg_trading_score', 0):.1f}")
+                    print(f"  Latest Score: {summary.get('latest_score', 0):.1f}")
+                    print(f"  Trend Distribution: {summary.get('trend_direction_counts', {})}")
+            except Exception as e:
+                print(f"  Error getting summary for {symbol}: {str(e)}")
+        
+        # Job status
+        scheduler = JobScheduler(db_manager)
+        job_status = scheduler.get_job_status()
+        
+        print(f"\n⏰ SCHEDULED JOBS STATUS:")
+        print(f"  Total Active Jobs: {job_status.get('total_active_jobs', 0)}")
+        print(f"  Job Types: {job_status.get('job_counts_by_type', {})}")
+        
+        next_jobs = job_status.get('next_jobs', [])
+        if next_jobs:
+            print(f"\n  Next 3 Jobs:")
+            for job in next_jobs[:3]:
+                print(f"    {job['symbol']} - {job['job_type']} - {job['next_run']}")
+        
+    except Exception as e:
+        print(f"❌ Error getting insights: {str(e)}")
+
+def run_scheduler_daemon(db_manager: DatabaseManager):
+    """Run the scheduler daemon"""
+    
+    if not db_manager:
+        print("❌ Database connection required for scheduler")
+        return
+    
+    print("\n🤖 STARTING SCHEDULER DAEMON")
+    print("=" * 40)
+    print("This will run continuously and execute scheduled jobs.")
+    print("Press Ctrl+C to stop the scheduler.")
+    
+    confirm = input("\nStart scheduler? (y/n): ").strip().lower()
+    if confirm != 'y':
+        print("Scheduler not started.")
+        return
+    
+    try:
+        scheduler = JobScheduler(db_manager)
+        
+        print("\n🚀 Scheduler starting...")
+        print("Monitor the logs for job execution details.")
+        print("The scheduler will check for due jobs every minute.")
+        
+        # This will run indefinitely until interrupted
+        scheduler.start(check_interval=60)
+        
+    except KeyboardInterrupt:
+        print("\n🛑 Scheduler stopped by user")
+    except Exception as e:
+        print(f"❌ Scheduler error: {str(e)}")
+
+def setup_database_connection():
+    """Interactive database setup"""
+    
+    print("\n🗄️  DATABASE SETUP")
+    print("=" * 30)
+    print("Choose database option:")
+    print("1. MongoDB Atlas (cloud - recommended)")
+    print("2. Local MongoDB")
+    print("3. Skip database (offline mode)")
+    
+    choice = input("\nChoice (1-3): ").strip()
+    
+    if choice == "1":
+        print("\nMongoDB Atlas Setup:")
+        print("1. Go to https://cloud.mongodb.com")
+        print("2. Create free account and cluster")
+        print("3. Get connection string")
+        
+        connection_string = input("\nEnter MongoDB Atlas connection string: ").strip()
+        if connection_string:
+            os.environ['MONGODB_CONNECTION_STRING'] = connection_string
+            return True
+        else:
+            print("No connection string provided")
+            return False
+    
+    elif choice == "2":
+        print("\nUsing local MongoDB (mongodb://localhost:27017/)")
+        return True
+    
+    elif choice == "3":
+        print("Running in offline mode")
+        return False
+    
+    else:
+        print("Invalid choice")
+        return False
+
+if __name__ == "__main__":
+    # Check if database setup is needed
+    if not os.getenv('MONGODB_CONNECTION_STRING'):
+        print("First time setup detected...")
+        has_db = setup_database_connection()
+        if not has_db:
+            print("Continuing without database...")
+    
+    main()
