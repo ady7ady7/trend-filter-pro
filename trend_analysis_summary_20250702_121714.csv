@@ -1,0 +1,15 @@
+Symbol,Trading_Score,Market_State,Trend_Direction,Risk_Level,Filename,Analysis_Time
+EURUSD=X,20,Choppy/Ranging Market - Avoid,neutral,High Risk,trend_analysis_EURUSD=X_20250702_121708.csv,2025-07-02 12:17:08
+GBPUSD=X,40,Weak Trend - Low Conviction,bearish,Moderate Risk,trend_analysis_GBPUSD=X_20250702_121708.csv,2025-07-02 12:17:08
+USDJPY=X,40,Weak Trend - Low Conviction,bullish,Moderate Risk,trend_analysis_USDJPY=X_20250702_121709.csv,2025-07-02 12:17:09
+USDCHF=X,20,Choppy/Ranging Market - Avoid,neutral,High Risk,trend_analysis_USDCHF=X_20250702_121709.csv,2025-07-02 12:17:09
+AUDUSD=X,10,Choppy/Ranging Market - Avoid,neutral,High Risk,trend_analysis_AUDUSD=X_20250702_121710.csv,2025-07-02 12:17:10
+USDCAD=X,35,Weak Trend - Low Conviction,neutral,Moderate Risk,trend_analysis_USDCAD=X_20250702_121710.csv,2025-07-02 12:17:10
+^GSPC,45,Moderate Trend - Wait for Confirmation,bullish,Moderate Risk,trend_analysis_^GSPC_20250702_121711.csv,2025-07-02 12:17:11
+^IXIC,45,Moderate Trend - Wait for Confirmation,bullish,Moderate Risk,trend_analysis_^IXIC_20250702_121711.csv,2025-07-02 12:17:11
+^DJI,70,Strong Trend with Mixed Signals,bullish,Low-Moderate Risk,trend_analysis_^DJI_20250702_121711.csv,2025-07-02 12:17:11
+^GDAXI,75,Weak Trend - Low Conviction,bearish,Low Risk,trend_analysis_^GDAXI_20250702_121712.csv,2025-07-02 12:17:12
+^FTSE,65,Weak Trend - Low Conviction,bullish,Low-Moderate Risk,trend_analysis_^FTSE_20250702_121712.csv,2025-07-02 12:17:12
+GC=F,55,Choppy/Ranging Market - Avoid,bullish,Moderate Risk,trend_analysis_GC=F_20250702_121713.csv,2025-07-02 12:17:13
+SI=F,100,Strong Bearish Trend - High Confidence,bearish,Low Risk,trend_analysis_SI=F_20250702_121713.csv,2025-07-02 12:17:13
+CL=F,60,Weak Trend - Low Conviction,neutral,Low Risk,trend_analysis_CL=F_20250702_121714.csv,2025-07-02 12:17:14
