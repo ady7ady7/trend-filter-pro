@@ -1,12 +1,12 @@
 """
 Trend Analyzer Module
-Comprehensive trend analysis using multiple technical indicators
+Comprehensive trend analysis using pandas-ta (no TA-Lib dependency!)
 """
 
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-import talib
+import pandas_ta as ta
 from typing import Dict, List, Tuple, Any
 import warnings
 warnings.filterwarnings('ignore')
@@ -21,7 +21,7 @@ class TrendAnalyzer:
         df = data.copy()
         
         for period in self.ema_periods:
-            df[f'EMA_{period}'] = talib.EMA(df['Close'].values, timeperiod=period)
+            df[f'EMA_{period}'] = ta.ema(df['Close'], length=period)
             
         return df
     
@@ -34,7 +34,7 @@ class TrendAnalyzer:
             if ema_col in data.columns and len(data) >= lookback:
                 # Calculate slope using linear regression over lookback period
                 recent_data = data[ema_col].tail(lookback).values
-                if not np.isnan(recent_data).any():
+                if not pd.isna(recent_data).any():
                     x = np.arange(len(recent_data))
                     slope = np.polyfit(x, recent_data, 1)[0]
                     # Normalize slope as percentage change per period
@@ -52,7 +52,7 @@ class TrendAnalyzer:
         ema_values = []
         for period in sorted(self.ema_periods):
             ema_col = f'EMA_{period}'
-            if ema_col in latest_row:
+            if ema_col in latest_row and not pd.isna(latest_row[ema_col]):
                 ema_values.append((period, latest_row[ema_col]))
         
         if len(ema_values) < 3:
@@ -69,8 +69,8 @@ class TrendAnalyzer:
                 bearish_aligned += 1
         
         total_comparisons = len(ema_values) - 1
-        bullish_ratio = bullish_aligned / total_comparisons
-        bearish_ratio = bearish_aligned / total_comparisons
+        bullish_ratio = bullish_aligned / total_comparisons if total_comparisons > 0 else 0
+        bearish_ratio = bearish_aligned / total_comparisons if total_comparisons > 0 else 0
         
         # Determine alignment
         if bullish_ratio >= 0.8:
@@ -117,6 +117,14 @@ class TrendAnalyzer:
                 fast_ema = recent_data[fast_col]
                 slow_ema = recent_data[slow_col]
                 
+                # Remove NaN values
+                valid_mask = ~(pd.isna(fast_ema) | pd.isna(slow_ema))
+                if valid_mask.sum() < 2:
+                    continue
+                
+                fast_ema = fast_ema[valid_mask]
+                slow_ema = slow_ema[valid_mask]
+                
                 # Find crossovers
                 fast_above = fast_ema > slow_ema
                 crossovers = fast_above != fast_above.shift(1)
@@ -140,19 +148,27 @@ class TrendAnalyzer:
         """Calculate mean reversion indicators"""
         df = data.copy()
         
-        # RSI
-        df['RSI'] = talib.RSI(df['Close'].values, timeperiod=14)
+        # RSI using pandas-ta
+        df['RSI'] = ta.rsi(df['Close'], length=14)
         
-        # Bollinger Bands
-        df['BB_upper'], df['BB_middle'], df['BB_lower'] = talib.BBANDS(
-            df['Close'].values, timeperiod=20, nbdevup=2, nbdevdn=2
-        )
+        # Bollinger Bands using pandas-ta
+        bb = ta.bbands(df['Close'], length=20, std=2)
+        if bb is not None:
+            df['BB_upper'] = bb['BBU_20_2.0']
+            df['BB_middle'] = bb['BBM_20_2.0'] 
+            df['BB_lower'] = bb['BBL_20_2.0']
+        else:
+            # Fallback calculation
+            df['BB_middle'] = df['Close'].rolling(20).mean()
+            std = df['Close'].rolling(20).std()
+            df['BB_upper'] = df['BB_middle'] + (std * 2)
+            df['BB_lower'] = df['BB_middle'] - (std * 2)
         
         # Current values
         latest = df.iloc[-1]
         
         # RSI analysis
-        rsi_current = latest['RSI']
+        rsi_current = latest['RSI'] if not pd.isna(latest['RSI']) else 50
         rsi_signal = 'neutral'
         if rsi_current < 30:
             rsi_signal = 'oversold'
@@ -160,7 +176,14 @@ class TrendAnalyzer:
             rsi_signal = 'overbought'
         
         # Bollinger Bands analysis
-        bb_position = (latest['Close'] - latest['BB_lower']) / (latest['BB_upper'] - latest['BB_lower'])
+        if not pd.isna(latest['BB_upper']) and not pd.isna(latest['BB_lower']):
+            bb_range = latest['BB_upper'] - latest['BB_lower']
+            if bb_range > 0:
+                bb_position = (latest['Close'] - latest['BB_lower']) / bb_range
+            else:
+                bb_position = 0.5
+        else:
+            bb_position = 0.5
         
         bb_signal = 'neutral'
         if bb_position < 0.2:
@@ -168,30 +191,49 @@ class TrendAnalyzer:
         elif bb_position > 0.8:
             bb_signal = 'overbought'
         
-        # Distance from 20 EMA (mean reversion level)
-        ema_20 = latest.get('EMA_21', latest['Close'])  # Use EMA_21 as proxy for 20
-        distance_from_mean = ((latest['Close'] - ema_20) / ema_20) * 100
+        # Distance from 21 EMA (mean reversion level)
+        ema_21 = latest.get('EMA_21', latest['Close'])
+        if pd.isna(ema_21):
+            ema_21 = latest['Close']
+        distance_from_mean = ((latest['Close'] - ema_21) / ema_21) * 100 if ema_21 != 0 else 0
         
         return {
-            'rsi_value': rsi_current,
+            'rsi_value': float(rsi_current),
             'rsi_signal': rsi_signal,
-            'bb_position': bb_position,
+            'bb_position': float(bb_position),
             'bb_signal': bb_signal,
-            'distance_from_mean_pct': distance_from_mean,
-            'close_price': latest['Close'],
-            'bb_upper': latest['BB_upper'],
-            'bb_lower': latest['BB_lower']
+            'distance_from_mean_pct': float(distance_from_mean),
+            'close_price': float(latest['Close']),
+            'bb_upper': float(latest.get('BB_upper', latest['Close'])),
+            'bb_lower': float(latest.get('BB_lower', latest['Close']))
         }
     
     def assess_market_choppiness(self, data: pd.DataFrame) -> Dict[str, Any]:
         """Assess if market is choppy/ranging"""
         df = data.copy()
         
-        # ADX for trend strength
-        df['ADX'] = talib.ADX(df['High'].values, df['Low'].values, df['Close'].values, timeperiod=14)
+        # ADX using pandas-ta
+        adx_data = ta.adx(df['High'], df['Low'], df['Close'], length=14)
+        if adx_data is not None and 'ADX_14' in adx_data.columns:
+            df['ADX'] = adx_data['ADX_14']
+        else:
+            # Fallback: simple trend strength calculation
+            df['ADX'] = df['Close'].rolling(14).apply(
+                lambda x: abs(x.iloc[-1] - x.iloc[0]) / x.std() * 10 if x.std() > 0 else 0
+            )
         
-        # ATR for volatility
-        df['ATR'] = talib.ATR(df['High'].values, df['Low'].values, df['Close'].values, timeperiod=14)
+        # ATR using pandas-ta
+        df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
+        if df['ATR'].isna().all():
+            # Fallback ATR calculation
+            df['TR'] = np.maximum(
+                df['High'] - df['Low'],
+                np.maximum(
+                    abs(df['High'] - df['Close'].shift(1)),
+                    abs(df['Low'] - df['Close'].shift(1))
+                )
+            )
+            df['ATR'] = df['TR'].rolling(14).mean()
         
         # Price efficiency ratio
         lookback = min(20, len(df))
@@ -203,8 +245,8 @@ class TrendAnalyzer:
             efficiency_ratio = 0
         
         latest = df.iloc[-1]
-        adx_value = latest['ADX']
-        atr_value = latest['ATR']
+        adx_value = latest['ADX'] if not pd.isna(latest['ADX']) else 25
+        atr_value = latest['ATR'] if not pd.isna(latest['ATR']) else 0
         
         # Assess choppiness
         is_choppy = False
@@ -216,18 +258,19 @@ class TrendAnalyzer:
             choppiness_score += 40
         
         # Recent volatility vs historical
-        recent_volatility = df['ATR'].tail(5).mean()
-        historical_volatility = df['ATR'].mean()
+        recent_atr = df['ATR'].tail(5).mean()
+        historical_atr = df['ATR'].mean()
         
-        if recent_volatility > historical_volatility * 1.5:
-            choppiness_score += 30
+        if not pd.isna(recent_atr) and not pd.isna(historical_atr) and historical_atr > 0:
+            if recent_atr > historical_atr * 1.5:
+                choppiness_score += 30
         
         is_choppy = choppiness_score > 50
         
         return {
-            'adx_value': adx_value,
-            'atr_value': atr_value,
-            'efficiency_ratio': efficiency_ratio,
+            'adx_value': float(adx_value),
+            'atr_value': float(atr_value),
+            'efficiency_ratio': float(efficiency_ratio),
             'is_choppy': is_choppy,
             'choppiness_score': choppiness_score,
             'trend_strength': 'weak' if adx_value < 25 else 'moderate' if adx_value < 40 else 'strong'
@@ -268,8 +311,8 @@ class TrendAnalyzer:
             'mean_reversion': mean_reversion,
             'choppiness': choppiness,
             'trend_direction': trend_direction,
-            'latest_price': data['Close'].iloc[-1],
-            'price_change_pct': ((data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]) * 100
+            'latest_price': float(data['Close'].iloc[-1]),
+            'price_change_pct': float(((data['Close'].iloc[-1] - data['Close'].iloc[0]) / data['Close'].iloc[0]) * 100)
         }
     
     def determine_trend_direction(self, alignment: Dict, slopes: Dict, crosses: List) -> str:
@@ -339,7 +382,7 @@ class TrendAnalyzer:
             'short_term_analysis': short_term,
             'opportunities': opportunities,
             'commentary': commentary,
-            'latest_price': short_term_data['Close'].iloc[-1],
+            'latest_price': float(short_term_data['Close'].iloc[-1]),
             'price_change_24h': short_term['price_change_pct'],
             'is_choppy_market': long_term['choppiness']['is_choppy'],
             'trend_strength': long_term['choppiness']['trend_strength']

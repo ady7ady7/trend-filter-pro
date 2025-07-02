@@ -6,8 +6,8 @@ yfinance>=0.2.18
 pandas>=1.5.0
 numpy>=1.24.0
 
-# Technical analysis
-TA-Lib>=0.4.25
+# Technical analysis (much easier to install than TA-Lib!)
+pandas-ta>=0.3.14b
 
 # Utilities and logging
 python-dateutil>=2.8.0
